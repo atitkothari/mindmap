@@ -2,11 +2,13 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { MindMapNode } from "@/lib/storage";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 
 interface NodeProps {
   node: MindMapNode;
+  nodes: MindMapNode[]; // Add nodes array to determine root
   isSelected: boolean;
+  isMultiSelected: boolean;
   isDragging?: boolean;
   isPotentialParent?: boolean;
   zoom?: number;
@@ -27,7 +29,9 @@ interface NodeProps {
 
 export function Node({
   node,
+  nodes,
   isSelected,
+  isMultiSelected,
   isDragging = false,
   isPotentialParent = false,
   zoom = 1,
@@ -45,6 +49,9 @@ export function Node({
   hasIncomingEdges = false,
   hasOutgoingEdges = false,
 }: NodeProps) {
+  
+  // Debug logging for selection states
+  console.log(`Node ${node.text}: isSelected=${isSelected}, isMultiSelected=${isMultiSelected}`);
   
   const [isEditing, setIsEditing] = useState(false);
   const [isDraggingLocal, setIsDraggingLocal] = useState(false);
@@ -141,6 +148,7 @@ export function Node({
     <div
       ref={nodeRef}
       className={`absolute select-none ${isSelected ? 'z-10' : 'z-0'}`}
+      data-node={node.id}
       style={{
         left: node.x,
         top: node.y,
@@ -156,6 +164,8 @@ export function Node({
           bg-white dark:bg-gray-800 border-2 rounded-lg shadow-lg cursor-move
           ${isSelected 
             ? 'border-blue-500 shadow-blue-200 dark:shadow-blue-900' 
+            : isMultiSelected
+            ? 'border-purple-500 shadow-purple-200 dark:shadow-purple-900'
             : isPotentialParent
             ? 'border-green-500 shadow-green-200 dark:shadow-green-900'
             : 'border-gray-300 dark:border-gray-600'
@@ -166,9 +176,15 @@ export function Node({
         style={{
           borderWidth: '3px',
           backgroundColor: '#ffffff',
-          borderColor: isSelected ? '#3b82f6' : '#d1d5db',
+          borderColor: isSelected 
+            ? '#3b82f6' // Blue for single selection
+            : isMultiSelected 
+            ? '#8b5cf6' // Purple for multi-selection
+            : '#d1d5db', // Gray for normal state
           boxShadow: isSelected 
             ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
+            : isMultiSelected
+            ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
             : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
           opacity: '1',
         }}
@@ -183,6 +199,8 @@ export function Node({
             e.currentTarget.style.backgroundColor = '#ffffff';
             e.currentTarget.style.boxShadow = isSelected 
               ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
+              : isMultiSelected
+              ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
               : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
           }
         }}
@@ -210,23 +228,7 @@ export function Node({
             )}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onAddChild}
-              className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded transition-colors"
-              title="Add child (Tab)"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors"
-              title="Delete (Delete)"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </div>
+          
         </div>
 
         {/* Collapsible indicator */}
@@ -247,21 +249,63 @@ export function Node({
       {/* Node connectors for edges - only show when selected */}
       {isSelected && (
         <>
-          <div className={`absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-blue-400 hover:scale-125 transition-all duration-200 ${
-            hasIncomingEdges ? 'bg-blue-500 ring-2 ring-blue-300' : 'bg-gray-400 hover:bg-blue-400'
-          }`} 
-               title="Input connector" />
+          {/* Debug info - remove this later */}
+          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 bg-white px-2 py-1 rounded border">
+            Root: {nodes[0]?.x}, Node: {node.x}, Left: {node.id === nodes[0]?.id || node.x < nodes[0]?.x ? 'Yes' : 'No'}, Right: {node.id === nodes[0]?.id || node.x >= nodes[0]?.x ? 'Yes' : 'No'}
+          </div>
           
-          <div className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-green-400 hover:scale-125 transition-all duration-200 ${
-            hasOutgoingEdges ? 'bg-green-500 ring-2 ring-green-300' : 'bg-gray-400 hover:bg-green-400'
-          }`} 
-               title="Output connector" />
+          {/* Left connector (left center) - for adding children on the left side */}
+          {/* Show left connector only if it's the root node or if the node is on the left side of the root */}
+          {(node.id === nodes[0]?.id || node.x < nodes[0]?.x) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                console.log('Left connector clicked for node:', node.id, 'at position:', node.x);
+                console.log('Is root node:', node.id === nodes[0]?.id);
+                console.log('Root node ID:', nodes[0]?.id);
+                console.log('Current node ID:', node.id);
+                // Root node creates children on left, left-side nodes create children below
+                if (node.id === nodes[0]?.id) {
+                  onAddSibling(); // This now creates a child on the left side
+                } else {
+                  onAddChild(); // Left-side nodes create children below
+                }
+              }}
+              className="absolute w-8 h-8 bg-purple-500 hover:bg-purple-600 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:scale-125 transition-all duration-200 flex items-center justify-center z-20 shadow-lg"
+              title={node.id === nodes[0]?.id ? "Add child on left (Enter)" : "Add child below (Enter)"}
+              style={{ 
+                left: '-16px', 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+              }}>
+              <span className="text-white text-sm font-bold">+</span>
+            </button>
+          )}
           
-          <div className="absolute top-1/2 -left-2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-purple-400 hover:scale-125 transition-all duration-200" 
-               title="Left connector" />
-          
-          <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-purple-400 hover:scale-125 transition-all duration-200" 
-               title="Right connector" />
+          {/* Right connector (right center) - for adding children */}
+          {/* Show right connector only if it's the root node or if the node is on the right side of the root */}
+          {(node.id === nodes[0]?.id || node.x >= nodes[0]?.x) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent event bubbling
+                console.log('Right connector clicked for node:', node.id, 'at position:', node.x);
+                console.log('Is root node:', node.id === nodes[0]?.id);
+                console.log('Root node ID:', nodes[0]?.id);
+                console.log('Current node ID:', node.id);
+                onAddChild();
+              }}
+              className="absolute w-8 h-8 bg-green-500 hover:bg-green-600 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:scale-125 transition-all duration-200 flex items-center justify-center z-20 shadow-lg"
+              title="Add child (Tab)"
+              style={{ 
+                right: '-16px', 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+              }}>
+              <span className="text-white text-sm font-bold">+</span>
+            </button>
+          )}
         </>
       )}
 

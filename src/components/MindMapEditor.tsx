@@ -17,14 +17,17 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
   const [edges, setEdges] = useState<MindMapEdge[]>(map.edges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [potentialParentId, setPotentialParentId] = useState<string | null>(null);
   const [draggingEdgeId, setDraggingEdgeId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ x: number; y: number } | null>(null);
-  const [potentialParentId, setPotentialParentId] = useState<string | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize, setGridSize] = useState(20);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const mapRef = useRef(map);
   const onSaveRef = useRef(onSave);
@@ -65,12 +68,15 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     const parent = nodes.find(n => n.id === parentId);
     if (!parent) return;
 
+    const rootNode = nodes[0]; // First node is always the root
+    const isOnLeftSide = parent.x < rootNode.x;
+    
     const childId = generateId();
     const childNode: MindMapNode = {
       id: childId,
       text: "New Node",
-      x: parent.x + 200,
-      y: parent.y + 100,
+      x: isOnLeftSide ? parent.x - 50 : parent.x + 50, // Small offset from parent, same side
+      y: parent.y + 100, // Below parent
       children: [],
     };
 
@@ -96,37 +102,81 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    const parentEdge = edges.find(e => e.to === nodeId);
-    if (!parentEdge) return;
-
-    const parent = nodes.find(n => n.id === parentEdge.from);
-    if (!parent) return;
-
-    const siblingId = generateId();
-    const siblingNode: MindMapNode = {
-      id: siblingId,
-      text: "New Node",
-      x: node.x + 200,
-      y: node.y,
-      children: [],
-    };
-
-    const newEdge: MindMapEdge = {
-      id: generateId(),
-      from: parentEdge.from,
-      to: siblingId,
-    };
-
-    const updatedNodes = nodes.map(n =>
-      n.id === parentEdge.from
-        ? { ...n, children: [...n.children, siblingId] }
-        : n
-    );
-
-    setNodes([...updatedNodes, siblingNode]);
-    setEdges([...edges, newEdge]);
+    const rootNode = nodes[0]; // First node is always the root
+    const isRootNode = node.id === rootNode.id;
     
-    addToast({ title: "Sibling node created", description: "Press Enter to create more siblings" });
+    let siblingId: string;
+    let siblingNode: MindMapNode;
+    let newEdge: MindMapEdge;
+
+    if (isRootNode) {
+      // For root node, create a child on the left side
+      siblingId = generateId();
+      siblingNode = {
+        id: siblingId,
+        text: "New Node",
+        x: rootNode.x - 250, // Position to the left of root
+        y: rootNode.y + 100, // Below root
+        children: [],
+      };
+      
+      // Create edge from root to new child
+      newEdge = {
+        id: generateId(),
+        from: rootNode.id,
+        to: siblingId,
+      };
+      
+      // Update root's children list
+      const updatedNodes = nodes.map(n =>
+        n.id === rootNode.id
+          ? { ...n, children: [...n.children, siblingId] }
+          : n
+      );
+      
+      setNodes([...updatedNodes, siblingNode]);
+      setEdges([...edges, newEdge]);
+    } else {
+      // For non-root nodes, create a sibling with the same parent
+      const parentEdge = edges.find(e => e.to === nodeId);
+      if (!parentEdge) return;
+
+      const parent = nodes.find(n => n.id === parentEdge.from);
+      if (!parent) return;
+
+      const isOnLeftSide = node.x < rootNode.x;
+      
+      siblingId = generateId();
+      siblingNode = {
+        id: siblingId,
+        text: "New Node",
+        x: isOnLeftSide ? node.x - 250 : node.x + 250, // Position on same side as current node
+        y: node.y, // Same Y level as sibling
+        children: [],
+      };
+
+      newEdge = {
+        id: generateId(),
+        from: parentEdge.from,
+        to: siblingId,
+      };
+
+      // Update parent's children list
+      const updatedNodes = nodes.map(n =>
+        n.id === parentEdge.from
+          ? { ...n, children: [...n.children, siblingId] }
+          : n
+      );
+
+      setNodes([...updatedNodes, siblingNode]);
+      setEdges([...edges, newEdge]);
+    }
+    
+    if (isRootNode) {
+      addToast({ title: "Left child created", description: "Press Enter to create more left children" });
+    } else {
+      addToast({ title: "Sibling node created", description: "Press Enter to create more siblings" });
+    }
   }, [nodes, edges, addToast]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -167,14 +217,27 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
 
     let closestParent: MindMapNode | null = null;
     let minDistance = Infinity;
-    const connectionThreshold = 80; // Distance threshold for parent connection
+    const connectionThreshold = 60; // Distance threshold for parent connection (adjusted for left/right connectors)
 
     for (const node of nodes) {
       if (node.id === draggedNodeId) continue;
       
-      // Calculate distance from dragged node center to potential parent center
+      // Determine which connector to check based on relative position
+      const isLeftSideConnection = x < node.x;
+      let parentConnectorX: number, parentConnectorY: number;
+      
+      if (isLeftSideConnection) {
+        // For left-side connections, check the right connector
+        parentConnectorX = node.x + 200 + 16; // Right connector position
+        parentConnectorY = node.y + 25; // Center of parent node
+      } else {
+        // For right-side connections, check the left connector
+        parentConnectorX = node.x - 16; // Left connector position
+        parentConnectorY = node.y + 25; // Center of parent node
+      }
+      
       const distance = Math.sqrt(
-        Math.pow(x - (node.x + 100), 2) + Math.pow(y - (node.y + 25), 2)
+        Math.pow(x - parentConnectorX, 2) + Math.pow(y - parentConnectorY, 2)
       );
       
       if (distance < connectionThreshold && distance < minDistance) {
@@ -274,24 +337,32 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     setIsPanning(false);
   }, []);
 
-  // Wheel zoom
+  // Handle wheel events for panning
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.1, Math.min(3, zoom * zoomFactor));
-    
-    // Zoom towards mouse position
-    const scaleChange = newZoom / zoom;
-    const newPanX = mouseX - (mouseX - pan.x) * scaleChange;
-    const newPanY = mouseY - (mouseY - pan.y) * scaleChange;
-    
-    setZoom(newZoom);
-    setPan({ x: newPanX, y: newPanY });
+    if (e.ctrlKey || e.metaKey) {
+      // Zoom with Ctrl/Cmd + wheel
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.1, Math.min(3, zoom * delta));
+      
+      // Zoom towards mouse position
+      const rect = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
+      const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
+      
+      setZoom(newZoom);
+      setPan({ x: newPanX, y: newPanY });
+    } else {
+      // Pan with wheel (horizontal and vertical)
+      e.preventDefault();
+      setPan(prevPan => ({
+        x: prevPan.x - e.deltaX,
+        y: prevPan.y - e.deltaY
+      }));
+    }
   }, [zoom, pan]);
 
   // Check if connecting two nodes would create a circular reference
@@ -409,10 +480,24 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     let minDistance = Infinity;
 
     for (const node of nodes) {
+      // Determine which connector to check based on relative position
+      const isLeftSideConnection = endX < node.x;
+      let nodeConnectorX: number, nodeConnectorY: number;
+      
+      if (isLeftSideConnection) {
+        // For left-side connections, check the right connector
+        nodeConnectorX = node.x + 200 + 16; // Right connector position
+        nodeConnectorY = node.y + 25; // Center of node
+      } else {
+        // For right-side connections, check the left connector
+        nodeConnectorX = node.x - 16; // Left connector position
+        nodeConnectorY = node.y + 25; // Center of node
+      }
+      
       const distance = Math.sqrt(
-        Math.pow(endX - (node.x + 100), 2) + Math.pow(endY - (node.y + 25), 2)
+        Math.pow(endX - nodeConnectorX, 2) + Math.pow(endY - nodeConnectorY, 2)
       );
-      if (distance < minDistance && distance < 50) { // 50px threshold for connection
+      if (distance < minDistance && distance < 40) { // 40px threshold for connection (adjusted for left/right connectors)
         minDistance = distance;
         targetNode = node;
       }
@@ -535,24 +620,135 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     };
   }, [selectedNodeId, handleCreateChild, handleCreateSibling, handleDeleteNode, showGrid, addToast, zoom, handleZoomIn, handleZoomOut, handleZoomReset, handleZoomToFit]);
 
+  // Handle keyboard events for multi-selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Clear all selections
+        setSelectedNodes(new Set());
+        setSelectedNodeId(null);
+      } else if (e.key === 'Delete' && selectedNodes.size > 0) {
+        // Delete all selected nodes
+        selectedNodes.forEach(nodeId => handleDeleteNode(nodeId));
+        setSelectedNodes(new Set());
+        setSelectedNodeId(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodes]);
+
+  // Update canvas cursor based on state
+  const getCanvasCursor = () => {
+    if (isPanning) return 'grabbing';
+    if (draggingNodeId) return 'grabbing';
+    if (selectionBox) return 'crosshair';
+    return 'default';
+  };
+
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setSelectedNodeId(null);
     }
   };
 
-  const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    handleMouseDown(e);
-    handleCanvasClick(e);
-  };
+  // Handle canvas mouse events for panning and selection
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    // Check if we're clicking on a node or edge
+    const target = e.target as HTMLElement;
+    const isNodeOrEdge = target.closest('[data-node]') || target.closest('[data-edge]') || target.closest('[data-svg]');
+    
+    console.log('Mouse down:', { 
+      target: target.tagName, 
+      isNodeOrEdge, 
+      button: e.button,
+      clientX: e.clientX,
+      clientY: e.clientY
+    });
+    
+    if (!isNodeOrEdge) {
+      // We're clicking on the canvas - handle panning/selection
+      if (e.button === 0) { // Left click - selection
+        console.log('Starting selection box');
+        setSelectionBox({ start: { x: e.clientX, y: e.clientY }, end: { x: e.clientX, y: e.clientY } });
+        
+        // Clear selection if not holding Ctrl/Cmd
+        if (!e.ctrlKey && !e.metaKey) {
+          setSelectedNodes(new Set());
+          setSelectedNodeId(null);
+        }
+      } else if (e.button === 1) { // Middle button - panning
+        console.log('Starting panning');
+        e.preventDefault();
+        setIsPanning(true);
+        setPanStart({ x: e.clientX, y: e.clientY });
+      }
+    }
+  }, []);
 
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    handleMouseMove(e);
-  };
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isPanning) {
+      const deltaX = e.clientX - panStart.x;
+      const deltaY = e.clientY - panStart.y;
+      
+      setPan(prevPan => ({
+        x: prevPan.x + deltaX,
+        y: prevPan.y + deltaY
+      }));
+      
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
+    
+    // Update selection box if creating one
+    if (selectionBox && !isPanning) {
+      setSelectionBox(prev => prev ? { ...prev, end: { x: e.clientX, y: e.clientY } } : null);
+    }
+  }, [isPanning, panStart, selectionBox]);
 
-  const handleCanvasMouseUp = (e: React.MouseEvent) => {
-    handleMouseUp();
-  };
+  const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
+    console.log('Mouse up:', { button: e.button, isPanning, hasSelectionBox: !!selectionBox });
+    
+    if (e.button === 1 && isPanning) { // Middle button release
+      console.log('Stopping panning');
+      setIsPanning(false);
+    } else if (e.button === 0 && selectionBox) { // Left button release
+      console.log('Processing selection box');
+      // Process selection box
+      const startX = Math.min(selectionBox.start.x, selectionBox.end.x);
+      const endX = Math.max(selectionBox.start.x, selectionBox.end.x);
+      const startY = Math.min(selectionBox.start.y, selectionBox.end.y);
+      const endY = Math.max(selectionBox.start.y, selectionBox.end.y);
+      
+      // Convert screen coordinates to world coordinates
+      const worldStartX = (startX - pan.x) / zoom;
+      const worldEndX = (endX - pan.x) / zoom;
+      const worldStartY = (startY - pan.y) / zoom;
+      const worldEndY = (endY - pan.y) / zoom;
+      
+      // Find nodes within selection box
+      const selectedNodeIds = new Set<string>();
+      nodes.forEach(node => {
+        const nodeCenterX = node.x + 100; // Node center X
+        const nodeCenterY = node.y + 25;  // Node center Y (middle of node)
+        
+        if (nodeCenterX >= worldStartX && nodeCenterX <= worldEndX &&
+            nodeCenterY >= worldStartY && nodeCenterY <= worldEndY) {
+          selectedNodeIds.add(node.id);
+        }
+      });
+      
+      console.log('Selected nodes:', Array.from(selectedNodeIds));
+      setSelectedNodes(selectedNodeIds);
+      if (selectedNodeIds.size === 1) {
+        setSelectedNodeId(Array.from(selectedNodeIds)[0]);
+      } else if (selectedNodeIds.size > 1) {
+        setSelectedNodeId(null); // Clear single selection for multi-selection
+      }
+      
+      setSelectionBox(null);
+    }
+  }, [isPanning, selectionBox, pan.x, pan.y, zoom, nodes]);
 
   return (
     <div className="relative h-full">
@@ -585,10 +781,39 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
         </div>
       </div> */}
 
-      <div 
+      {/* Selection info */}
+      {selectedNodes.size > 0 && (
+        <div className="absolute bottom-4 left-4 z-20">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="font-medium">
+                {selectedNodes.size} node{selectedNodes.size !== 1 ? 's' : ''} selected
+              </div>
+              <div className="text-xs mt-1">
+                Press Delete to remove, Escape to clear selection
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interaction instructions */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3">
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+            <div className="font-medium">Navigation</div>
+            <div>• Left click + drag: Select nodes</div>
+            <div>• Middle click + drag: Pan canvas</div>
+            <div>• Wheel: Pan vertically</div>
+            <div>• Ctrl/Cmd + Wheel: Zoom</div>
+          </div>
+        </div>
+      </div>
+
+      <div
         ref={useRef<HTMLDivElement>(null)}
         className={`relative w-full h-full overflow-hidden bg-gray-50 dark:bg-gray-900 ${
-          isPanning ? 'cursor-grabbing' : 'cursor-grab'
+          getCanvasCursor()
         }`}
         onClick={handleCanvasClick}
         onMouseDown={handleCanvasMouseDown}
@@ -598,10 +823,7 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
       >
         {/* Grid Background */}
         {showGrid && (
-          <svg 
-            className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-300 ease-in-out"
-            style={{ opacity: showGrid ? 1 : 0 }}
-          >
+          <svg className="absolute inset-0 w-full h-full" data-svg="grid">
             <defs>
               <pattern
                 id="grid"
@@ -647,7 +869,7 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
           </svg>
         )}
 
-        <svg className="absolute inset-0 w-full h-full">
+        <svg className="absolute inset-0 w-full h-full" data-svg="edges">
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
             {edges.map((edge) => {
               const fromNode = nodes.find(n => n.id === edge.from);
@@ -671,6 +893,77 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
             })}
           </g>
         </svg>
+
+        {/* Selection box overlay */}
+        {selectionBox && (
+          <div
+            className="absolute border-2 border-blue-500 bg-blue-100 bg-opacity-20 pointer-events-none z-20"
+            style={{
+              left: Math.min(selectionBox.start.x, selectionBox.end.x),
+              top: Math.min(selectionBox.start.y, selectionBox.end.y),
+              width: Math.abs(selectionBox.end.x - selectionBox.start.x),
+              height: Math.abs(selectionBox.end.y - selectionBox.start.y),
+            }}
+          />
+        )}
+
+        {/* Nodes */}
+        <div
+          className="relative w-full h-full"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+          }}
+        >
+          {nodes.map((node) => {
+            const hasIncomingEdges = edges.some(edge => edge.to === node.id);
+            const hasOutgoingEdges = edges.some(edge => edge.from === node.id);
+            const isSelected = selectedNodeId === node.id;
+            const isMultiSelected = selectedNodes.has(node.id) && selectedNodes.size > 1;
+            
+            // Debug logging for selection states
+            if (selectedNodes.has(node.id)) {
+              console.log(`Node ${node.text}: isSelected=${isSelected}, isMultiSelected=${isMultiSelected}, selectedNodes.size=${selectedNodes.size}`);
+            }
+            
+            return (
+              <Node
+                key={node.id}
+                node={node}
+                nodes={nodes}
+                isSelected={isSelected}
+                isMultiSelected={isMultiSelected}
+                isDragging={draggingNodeId === node.id}
+                isPotentialParent={potentialParentId === node.id}
+                zoom={zoom}
+                pan={pan}
+                onSelect={() => {
+                  // Handle multi-selection
+                  if (selectedNodes.size > 1) {
+                    // If multiple nodes are already selected, add this one
+                    setSelectedNodes(prev => new Set([...prev, node.id]));
+                    setSelectedNodeId(null); // Clear single selection
+                  } else {
+                    // Single selection
+                    setSelectedNodes(new Set([node.id]));
+                    setSelectedNodeId(node.id);
+                  }
+                }}
+                onTextChange={(text) => handleUpdateNode(node.id, { text })}
+                onPositionChange={(x, y) => handleUpdateNode(node.id, { x, y })}
+                onToggleCollapse={() => handleUpdateNode(node.id, { collapsed: !node.collapsed })}
+                onDelete={() => handleDeleteNode(node.id)}
+                onAddChild={() => handleCreateChild(node.id)}
+                onAddSibling={() => handleCreateSibling(node.id)}
+                onDragStart={() => handleDragStart(node.id)}
+                onDragMove={handleDragMove}
+                onDragEnd={(x, y) => handleDragEnd(node.id, x, y)}
+                hasIncomingEdges={hasIncomingEdges}
+                hasOutgoingEdges={hasOutgoingEdges}
+              />
+            );
+          })}
+        </div>
 
         {/* Connection preview overlay */}
         {draggingNodeId && potentialParentId && (
@@ -702,10 +995,24 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
                   const parentNode = nodes.find(n => n.id === potentialParentId);
                   if (!draggedNode || !parentNode) return null;
 
-                  const startX = draggedNode.x + 100;
-                  const startY = draggedNode.y + 25;
-                  const endX = parentNode.x + 100;
-                  const endY = parentNode.y + 25;
+                  // Determine if this is a left-side connection
+                  const isLeftSideConnection = draggedNode.x < parentNode.x;
+                  
+                  let startX: number, startY: number, endX: number, endY: number;
+                  
+                  if (isLeftSideConnection) {
+                    // Left-side connection: from left connector to right connector
+                    startX = draggedNode.x - 16; // Left connector
+                    startY = draggedNode.y + 25; // Center of dragged node
+                    endX = parentNode.x + 200 + 16; // Right connector
+                    endY = parentNode.y + 25; // Center of parent node
+                  } else {
+                    // Right-side connection: from right connector to left connector
+                    startX = draggedNode.x + 200 + 16; // Right connector
+                    startY = draggedNode.y + 25; // Center of dragged node
+                    endX = parentNode.x - 16; // Left connector
+                    endY = parentNode.y + 25; // Center of parent node
+                  }
 
                   return (
                     <g>
@@ -744,6 +1051,27 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
                         strokeWidth="2"
                         opacity="0.4"
                       />
+                      {/* Connector highlight */}
+                      <circle
+                        cx={endX}
+                        cy={endY}
+                        r="8"
+                        fill="#10b981"
+                        opacity="0.8"
+                        className="animate-pulse"
+                      />
+                      {/* Left connector indicator */}
+                      <rect
+                        x={endX - 6}
+                        y={endY - 6}
+                        width="12"
+                        height="12"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="2"
+                        opacity="0.6"
+                        rx="6"
+                      />
                     </g>
                   );
                 })()}
@@ -752,41 +1080,6 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
           </div>
         )}
         
-        <div
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: '0 0',
-          }}
-        >
-          {nodes.map((node) => {
-            const hasIncomingEdges = edges.some(edge => edge.to === node.id);
-            const hasOutgoingEdges = edges.some(edge => edge.from === node.id);
-            
-            return (
-              <Node
-                key={node.id}
-                node={node}
-                isSelected={selectedNodeId === node.id}
-                isDragging={draggingNodeId === node.id}
-                isPotentialParent={potentialParentId === node.id}
-                zoom={zoom}
-                pan={pan}
-                onSelect={() => setSelectedNodeId(node.id)}
-                onTextChange={(text) => handleUpdateNode(node.id, { text })}
-                onPositionChange={(x, y) => handleUpdateNode(node.id, { x, y })}
-                onToggleCollapse={() => handleUpdateNode(node.id, { collapsed: !node.collapsed })}
-                onDelete={() => handleDeleteNode(node.id)}
-                onAddChild={() => handleCreateChild(node.id)}
-                onAddSibling={() => handleCreateSibling(node.id)}
-                onDragStart={() => handleDragStart(node.id)}
-                onDragMove={handleDragMove}
-                onDragEnd={(x, y) => handleDragEnd(node.id, x, y)}
-                hasIncomingEdges={hasIncomingEdges}
-                hasOutgoingEdges={hasOutgoingEdges}
-              />
-            );
-          })}
-        </div>
       </div>
     </div>
   );
