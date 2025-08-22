@@ -56,13 +56,6 @@ export function Edge({
 
   // Create a curved path with better control points
   const deltaX = toX - fromX;
-  const deltaY = toY - fromY;
-  
-  // Calculate the distance for better curve control
-  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-  
-  // Adjust control points based on distance and direction
-  const controlOffset = Math.min(distance * 0.3, 80); // Cap the control offset
   
   // Control points for smooth curves - create more natural horizontal flow
   const controlPoint1X = fromX + deltaX * 0.25;
@@ -96,7 +89,7 @@ export function Edge({
       {/* Main edge line - make it draggable */}
       <path
         d={path}
-        stroke={isDragging ? "#3b82f6" : (isHovered ? getDarkerColor(getBranchColor(fromNode.id, nodes, edges), 0.8) : getBranchColor(fromNode.id, nodes, edges))}
+        stroke={isDragging ? "#3b82f6" : (isHovered ? getDarkerColor(getBranchColor(toNode.id, nodes, edges), 0.8) : getBranchColor(toNode.id, nodes, edges))}
         strokeWidth={isDragging ? "4" : (isHovered ? "3.5" : "3")}
         fill="none"
         className={isDragging ? "transition-none cursor-grabbing" : "transition-all duration-200 cursor-grab"}
@@ -107,7 +100,7 @@ export function Edge({
         onMouseLeave={() => setIsHovered(false)}
         style={{ 
           cursor: 'grab',
-          filter: isDragging ? 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))' : `drop-shadow(0 0 2px ${getBranchColor(fromNode.id, nodes, edges)}20)`,
+          filter: isDragging ? 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.3))' : `drop-shadow(0 0 1px ${getBranchColor(toNode.id, nodes, edges)}10)`,
           strokeDasharray: isDragging ? '5,5' : 'none',
           strokeLinecap: 'round',
           strokeLinejoin: 'round'
@@ -122,7 +115,7 @@ export function Edge({
             cx={fromX}
             cy={fromY}
             r="4"
-            fill="#10b981"
+            fill={getBranchColor(fromNode.id, nodes, edges)}
             stroke="#ffffff"
             strokeWidth="2"
             opacity="0.9"
@@ -132,7 +125,7 @@ export function Edge({
             cx={toX}
             cy={toY}
             r="4"
-            fill="#3b82f6"
+            fill={getBranchColor(toNode.id, nodes, edges)}
             stroke="#ffffff"
             strokeWidth="2"
             opacity="0.9"

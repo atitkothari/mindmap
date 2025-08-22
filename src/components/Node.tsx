@@ -185,27 +185,27 @@ export function Node({
             ? '#8b5cf6' // Purple for multi-selection
             : getBranchColor(node.id, nodes, edges), // Use branch color for normal state
           boxShadow: isSelected 
-            ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
+            ? '0 2px 3px -1px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)' 
             : isMultiSelected
-            ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
-            : `0 1px 2px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.1)}`,
+            ? '0 2px 3px -1px rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1)'
+            : `0 0.5px 1px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.05)}`,
           opacity: '1',
         }}
         onMouseEnter={(e) => {
           if (e.currentTarget) {
             e.currentTarget.style.backgroundColor = '#f8fafc';
             const branchColor = getBranchColor(node.id, nodes, edges);
-            e.currentTarget.style.boxShadow = `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 2px ${branchColor}20`;
+            e.currentTarget.style.boxShadow = `0 2px 3px -1px rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03), 0 0 0 1px ${branchColor}10`;
           }
         }}
         onMouseLeave={(e) => {
           if (e.currentTarget) {
             e.currentTarget.style.backgroundColor = '#ffffff';
             e.currentTarget.style.boxShadow = isSelected 
-              ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
+              ? '0 2px 3px -1px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)' 
               : isMultiSelected
-              ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
-              : `0 1px 3px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.2)}, 0 1px 2px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.1)}`;
+              ? '0 2px 3px -1px rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1)'
+              : `0 0.5px 1.5px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.1)}, 0 0.5px 1px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.05)}`;
           }
         }}
         onMouseDown={handleMouseDown}
