@@ -94,7 +94,6 @@ export function Edge({
         stroke={isDragging ? "#3b82f6" : (isHovered ? "#64748b" : "#94a3b8")}
         strokeWidth={isDragging ? "3" : (isHovered ? "2.5" : "2")}
         fill="none"
-        markerEnd="url(#arrowhead)"
         className={isDragging ? "transition-none cursor-grabbing" : "transition-all duration-200 cursor-grab"}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -147,23 +146,6 @@ export function Edge({
           />
         </>
       )}
-      
-      {/* Arrow marker definition */}
-      <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="7"
-          refX="9"
-          refY="3.5"
-          orient="auto"
-        >
-          <polygon
-            points="0 0, 10 3.5, 0 7"
-            fill={isDragging ? "#3b82f6" : (isHovered ? "#64748b" : "#94a3b8")}
-          />
-        </marker>
-      </defs>
     </g>
   );
 }

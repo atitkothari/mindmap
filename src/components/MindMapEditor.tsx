@@ -797,19 +797,6 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
         </div>
       )}
 
-      {/* Interaction instructions */}
-      <div className="absolute top-4 left-4 z-20">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3">
-          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <div className="font-medium">Navigation</div>
-            <div>• Left click + drag: Select nodes</div>
-            <div>• Middle click + drag: Pan canvas</div>
-            <div>• Wheel: Pan vertically</div>
-            <div>• Ctrl/Cmd + Wheel: Zoom</div>
-          </div>
-        </div>
-      </div>
-
       <div
         ref={useRef<HTMLDivElement>(null)}
         className={`relative w-full h-full overflow-hidden bg-gray-50 dark:bg-gray-900 ${

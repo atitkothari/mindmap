@@ -249,10 +249,6 @@ export function Node({
       {/* Node connectors for edges - only show when selected */}
       {isSelected && (
         <>
-          {/* Debug info - remove this later */}
-          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-            Root: {nodes[0]?.x}, Node: {node.x}, Left: {node.id === nodes[0]?.id || node.x < nodes[0]?.x ? 'Yes' : 'No'}, Right: {node.id === nodes[0]?.id || node.x >= nodes[0]?.x ? 'Yes' : 'No'}
-          </div>
           
           {/* Left connector (left center) - for adding children on the left side */}
           {/* Show left connector only if it's the root node or if the node is on the left side of the root */}
