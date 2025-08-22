@@ -21,11 +21,14 @@ export function Edge({
   onDragMove,
   onDragEnd
 }: EdgeProps) {
-  // Calculate edge path
+  // Calculate edge path to connect to connector points
+  // From node: bottom connector (output)
   const fromX = fromNode.x + 100; // Center of node (assuming 200px width)
-  const fromY = fromNode.y + 50;  // Bottom of node
+  const fromY = fromNode.y + 50 + 8;  // Bottom connector position (50 + 8 for connector offset)
+  
+  // To node: top connector (input)
   const toX = toNode.x + 100;     // Center of node
-  const toY = toNode.y + 25;      // Top of node
+  const toY = toNode.y + 25 - 8;  // Top connector position (25 - 8 for connector offset)
 
   // Create a curved path
   const midX = (fromX + toX) / 2;

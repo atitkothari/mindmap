@@ -21,6 +21,8 @@ interface NodeProps {
   onDragStart: () => void;
   onDragMove: (nodeId: string, x: number, y: number) => void;
   onDragEnd: (x: number, y: number) => void;
+  hasIncomingEdges?: boolean;
+  hasOutgoingEdges?: boolean;
 }
 
 export function Node({
@@ -40,6 +42,8 @@ export function Node({
   onDragStart,
   onDragMove,
   onDragEnd,
+  hasIncomingEdges = false,
+  hasOutgoingEdges = false,
 }: NodeProps) {
   
   const [isEditing, setIsEditing] = useState(false);
@@ -238,6 +242,27 @@ export function Node({
       {/* Connection point indicator */}
       {isSelected && (
         <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800" />
+      )}
+
+      {/* Node connectors for edges - only show when selected */}
+      {isSelected && (
+        <>
+          <div className={`absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-blue-400 hover:scale-125 transition-all duration-200 ${
+            hasIncomingEdges ? 'bg-blue-500 ring-2 ring-blue-300' : 'bg-gray-400 hover:bg-blue-400'
+          }`} 
+               title="Input connector" />
+          
+          <div className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-green-400 hover:scale-125 transition-all duration-200 ${
+            hasOutgoingEdges ? 'bg-green-500 ring-2 ring-green-300' : 'bg-gray-400 hover:bg-green-400'
+          }`} 
+               title="Output connector" />
+          
+          <div className="absolute top-1/2 -left-2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-purple-400 hover:scale-125 transition-all duration-200" 
+               title="Left connector" />
+          
+          <div className="absolute top-1/2 -right-2 transform -translate-y-1/2 w-3 h-3 bg-gray-400 rounded-full border-2 border-white dark:border-gray-800 cursor-pointer hover:bg-purple-400 hover:scale-125 transition-all duration-200" 
+               title="Right connector" />
+        </>
       )}
 
       {/* Potential parent indicator */}

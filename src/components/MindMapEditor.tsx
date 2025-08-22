@@ -573,7 +573,7 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
       />
 
       {/* Zoom and Pan Info */}
-      <div className="absolute top-4 left-4 z-20">
+      {/* <div className="absolute top-4 left-4 z-20">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-3">
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
             <div>Zoom: {Math.round(zoom * 100)}%</div>
@@ -583,7 +583,7 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div 
         ref={useRef<HTMLDivElement>(null)}
@@ -758,27 +758,34 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
             transformOrigin: '0 0',
           }}
         >
-          {nodes.map((node) => (
-            <Node
-              key={node.id}
-              node={node}
-              isSelected={selectedNodeId === node.id}
-              isDragging={draggingNodeId === node.id}
-              isPotentialParent={potentialParentId === node.id}
-              zoom={zoom}
-              pan={pan}
-              onSelect={() => setSelectedNodeId(node.id)}
-              onTextChange={(text) => handleUpdateNode(node.id, { text })}
-              onPositionChange={(x, y) => handleUpdateNode(node.id, { x, y })}
-              onToggleCollapse={() => handleUpdateNode(node.id, { collapsed: !node.collapsed })}
-              onDelete={() => handleDeleteNode(node.id)}
-              onAddChild={() => handleCreateChild(node.id)}
-              onAddSibling={() => handleCreateSibling(node.id)}
-              onDragStart={() => handleDragStart(node.id)}
-              onDragMove={handleDragMove}
-              onDragEnd={(x, y) => handleDragEnd(node.id, x, y)}
-            />
-          ))}
+          {nodes.map((node) => {
+            const hasIncomingEdges = edges.some(edge => edge.to === node.id);
+            const hasOutgoingEdges = edges.some(edge => edge.from === node.id);
+            
+            return (
+              <Node
+                key={node.id}
+                node={node}
+                isSelected={selectedNodeId === node.id}
+                isDragging={draggingNodeId === node.id}
+                isPotentialParent={potentialParentId === node.id}
+                zoom={zoom}
+                pan={pan}
+                onSelect={() => setSelectedNodeId(node.id)}
+                onTextChange={(text) => handleUpdateNode(node.id, { text })}
+                onPositionChange={(x, y) => handleUpdateNode(node.id, { x, y })}
+                onToggleCollapse={() => handleUpdateNode(node.id, { collapsed: !node.collapsed })}
+                onDelete={() => handleDeleteNode(node.id)}
+                onAddChild={() => handleCreateChild(node.id)}
+                onAddSibling={() => handleCreateSibling(node.id)}
+                onDragStart={() => handleDragStart(node.id)}
+                onDragMove={handleDragMove}
+                onDragEnd={(x, y) => handleDragEnd(node.id, x, y)}
+                hasIncomingEdges={hasIncomingEdges}
+                hasOutgoingEdges={hasOutgoingEdges}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
