@@ -1,26 +1,137 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    font-family: system-ui, sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
 }
+
+/* Mind map specific styles */
+.mindmap-canvas {
+  background-image: 
+    radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.dark .mindmap-canvas {
+  background-image: 
+    radial-gradient(circle at 1px 1px, #334155 1px, transparent 0);
+}
+
+/* Grid slider styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: #dbeafe;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.dark .slider::-webkit-slider-track {
+  background: #1e3a8a;
+}
+
+.dark .slider::-webkit-slider-thumb {
+  background: #60a5fa;
+  border-color: #1e293b;
+}
+
+.dark .slider::-webkit-slider-thumb:hover {
+  background: #3b82f6;
+}
+
+/* Zoom and Pan styles */
+.mindmap-zoom-transition {
+  transition: transform 0.1s ease-out;
+}
+
+.mindmap-pan-transition {
+  transition: transform 0.05s ease-out;
+}
+
+.mindmap-canvas-grab {
+  cursor: grab;
+}
+
+.mindmap-canvas-grabbing {
+  cursor: grabbing;
+}
+
+/* Smooth zoom transitions */
+.mindmap-node {
+  transition: transform 0.1s ease-out;
+}
+
+.mindmap-edge {
+  transition: stroke-width 0.1s ease-out;
+}
+
+/* Toast animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
