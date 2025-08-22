@@ -114,8 +114,9 @@ export const createNewMap = (name: string): MindMap => {
   const rootNode: MindMapNode = {
     id: generateId(),
     text: 'Root',
-    x: 0,
-    y: 0,
+    //center the root node
+    x: window.innerWidth / 2 - 150,
+    y: window.innerHeight / 2 - 150,
     children: [],
   };
 

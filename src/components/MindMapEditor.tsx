@@ -75,8 +75,8 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
     const childNode: MindMapNode = {
       id: childId,
       text: "New Node",
-      x: isOnLeftSide ? parent.x - 50 : parent.x + 50, // Small offset from parent, same side
-      y: parent.y + 100, // Below parent
+      x: isOnLeftSide ? parent.x - 300 : parent.x + 300, // Small offset from parent, same side
+      y: parent.y, // Below parent
       children: [],
     };
 
@@ -115,8 +115,8 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
       siblingNode = {
         id: siblingId,
         text: "New Node",
-        x: rootNode.x - 250, // Position to the left of root
-        y: rootNode.y + 100, // Below root
+        x: rootNode.x - 300, // Position to the left of root
+        y: rootNode.y, // Below root
         children: [],
       };
       
