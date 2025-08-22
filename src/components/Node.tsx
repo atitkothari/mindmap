@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { MindMapNode } from "@/lib/storage";
+import { MindMapNode, MindMapEdge } from "@/lib/storage";
 import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { getBranchColor, getDarkerColor } from "@/lib/colors";
 
 interface NodeProps {
   node: MindMapNode;
   nodes: MindMapNode[]; // Add nodes array to determine root
+  edges: MindMapEdge[]; // Add edges array to determine branch colors
   isSelected: boolean;
   isMultiSelected: boolean;
   isDragging?: boolean;
@@ -30,6 +32,7 @@ interface NodeProps {
 export function Node({
   node,
   nodes,
+  edges,
   isSelected,
   isMultiSelected,
   isDragging = false,
@@ -168,30 +171,31 @@ export function Node({
             ? 'border-purple-500 shadow-purple-200 dark:shadow-purple-900'
             : isPotentialParent
             ? 'border-green-500 shadow-green-200 dark:shadow-green-900'
-            : 'border-gray-300 dark:border-gray-600'
+            : ''
           }
           hover:shadow-xl hover:scale-105 transition-all duration-200
           ${isPotentialParent ? 'ring-2 ring-green-300 dark:ring-green-700' : ''}
         `}
         style={{
-          borderWidth: '3px',
+          borderWidth: '4px',
           backgroundColor: '#ffffff',
           borderColor: isSelected 
             ? '#3b82f6' // Blue for single selection
             : isMultiSelected 
             ? '#8b5cf6' // Purple for multi-selection
-            : '#d1d5db', // Gray for normal state
+            : getBranchColor(node.id, nodes, edges), // Use branch color for normal state
           boxShadow: isSelected 
             ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
             : isMultiSelected
             ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
-            : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            : `0 1px 2px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.1)}`,
           opacity: '1',
         }}
         onMouseEnter={(e) => {
           if (e.currentTarget) {
             e.currentTarget.style.backgroundColor = '#f8fafc';
-            e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+            const branchColor = getBranchColor(node.id, nodes, edges);
+            e.currentTarget.style.boxShadow = `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 2px ${branchColor}20`;
           }
         }}
         onMouseLeave={(e) => {
@@ -201,7 +205,7 @@ export function Node({
               ? '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2)' 
               : isMultiSelected
               ? '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 0 0 2px rgba(139, 92, 246, 0.2)'
-              : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
+              : `0 1px 3px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.2)}, 0 1px 2px 0 ${getDarkerColor(getBranchColor(node.id, nodes, edges), 0.1)}`;
           }
         }}
         onMouseDown={handleMouseDown}

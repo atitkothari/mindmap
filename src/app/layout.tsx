@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ToastContext";
@@ -18,6 +19,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          defer
+          data-domain="mindmap.theperseuslabs.com"
+          src="https://pl-plausible.194.195.92.250.sslip.io/js/script.file-downloads.hash.outbound-links.pageview-props.tagged-events.js"
+        />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

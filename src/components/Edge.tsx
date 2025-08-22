@@ -2,11 +2,14 @@
 
 import { MindMapEdge, MindMapNode } from "@/lib/storage";
 import { useState } from "react";
+import { getBranchColor, getDarkerColor } from "@/lib/colors";
 
 interface EdgeProps {
   edge: MindMapEdge;
   fromNode: MindMapNode;
   toNode: MindMapNode;
+  nodes: MindMapNode[];
+  edges: MindMapEdge[];
   isDragging?: boolean;
   onDragStart?: (edgeId: string, x: number, y: number) => void;
   onDragMove?: (x: number, y: number) => void;
@@ -17,6 +20,8 @@ export function Edge({
   edge,
   fromNode, 
   toNode, 
+  nodes,
+  edges,
   isDragging = false,
   onDragStart,
   onDragMove,
@@ -91,8 +96,8 @@ export function Edge({
       {/* Main edge line - make it draggable */}
       <path
         d={path}
-        stroke={isDragging ? "#3b82f6" : (isHovered ? "#64748b" : "#94a3b8")}
-        strokeWidth={isDragging ? "3" : (isHovered ? "2.5" : "2")}
+        stroke={isDragging ? "#3b82f6" : (isHovered ? getDarkerColor(getBranchColor(fromNode.id, nodes, edges), 0.8) : getBranchColor(fromNode.id, nodes, edges))}
+        strokeWidth={isDragging ? "4" : (isHovered ? "3.5" : "3")}
         fill="none"
         className={isDragging ? "transition-none cursor-grabbing" : "transition-all duration-200 cursor-grab"}
         onMouseDown={handleMouseDown}
@@ -102,8 +107,10 @@ export function Edge({
         onMouseLeave={() => setIsHovered(false)}
         style={{ 
           cursor: 'grab',
-          filter: isDragging ? 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))' : 'none',
-          strokeDasharray: isDragging ? '5,5' : 'none'
+          filter: isDragging ? 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))' : `drop-shadow(0 0 2px ${getBranchColor(fromNode.id, nodes, edges)}20)`,
+          strokeDasharray: isDragging ? '5,5' : 'none',
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round'
         }}
       />
       

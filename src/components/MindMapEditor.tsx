@@ -871,6 +871,8 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
                   edge={edge}
                   fromNode={fromNode}
                   toNode={toNode}
+                  nodes={nodes}
+                  edges={edges}
                   isDragging={isDragging}
                   onDragStart={handleEdgeDragStart}
                   onDragMove={handleEdgeDragMove}
@@ -918,6 +920,7 @@ export function MindMapEditor({ map, onSave }: MindMapEditorProps) {
                 key={node.id}
                 node={node}
                 nodes={nodes}
+                edges={edges}
                 isSelected={isSelected}
                 isMultiSelected={isMultiSelected}
                 isDragging={draggingNodeId === node.id}
